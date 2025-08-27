@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npx next dev -H 0.0.0.0 -p 3000",
+    "dev:3001": "next dev -p 3001",
     "build": "npx next build",
     "start": "npx next start",
     "lint": "npx next lint"
