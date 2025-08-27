@@ -19,7 +19,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push("/dashboard")
+      router.push("/login")
     }
   }, [user, loading, router])
 
@@ -42,7 +42,10 @@ export default function HomePage() {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold">Welcome</CardTitle>
             <CardDescription>
-              Sign in to your account or create a new one to get started.
+              Sign in to your account or create a new one to get started 
+            </CardDescription>
+            <CardDescription>
+              (If you have an account sign in instead).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
