@@ -1,3 +1,4 @@
+// app/api/auth/register/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import { createUser, getUserByEmail } from "@/lib/auth"
 import { SignJWT } from "jose"
@@ -9,13 +10,19 @@ export async function POST(request: NextRequest) {
     const { email, password, name } = await request.json()
 
     if (!email || !password) {
-      return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Email and password are required" },
+        { status: 400 }
+      )
     }
 
     // Check if user already exists
     const existingUser = await getUserByEmail(email)
     if (existingUser) {
-      return NextResponse.json({ error: "User already exists with this email" }, { status: 409 })
+      return NextResponse.json(
+        { error: "User already exists with this email" },
+        { status: 409 }
+      )
     }
 
     // Create new user
@@ -28,7 +35,7 @@ export async function POST(request: NextRequest) {
       .setExpirationTime("24h")
       .sign(secret)
 
-    // Create response with user data (without password)
+    // Response without password
     const response = NextResponse.json({
       user: {
         id: user.id,
@@ -38,7 +45,7 @@ export async function POST(request: NextRequest) {
       message: "Registration successful",
     })
 
-    // Set HTTP-only cookie
+    // Set auth cookie
     response.cookies.set("auth-token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -50,6 +57,9 @@ export async function POST(request: NextRequest) {
     return response
   } catch (error) {
     console.error("Registration error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
   }
 }
