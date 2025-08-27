@@ -6,9 +6,12 @@ import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
 
 export const metadata: Metadata = {
-  title: "v0 App",
+  title: "FranisCanteen",
   description: "Created with v0",
   generator: "v0.app",
+  icons: {
+    icon: "/SFAC.ico",
+  }
 }
 
 export default function RootLayout({
