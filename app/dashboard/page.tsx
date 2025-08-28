@@ -2,7 +2,8 @@
 
 import { useAuth } from "@/lib/auth-context"
 import { AuthGuard } from "@/components/auth-guard"
-import { LogOut } from "lucide-react"
+import { LogOut, X } from "lucide-react"
+import { useState } from "react"
 
 export default function DashboardPage() {
   return (
@@ -14,6 +15,7 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const { user, logout } = useAuth()
+  const [isPanelOpen, setIsPanelOpen] = useState(false)
 
   const handleLogout = async () => {
     await logout()
@@ -104,6 +106,7 @@ function DashboardContent() {
                 </h2>
                 <div className="text-center">
                   <button
+                    onClick={() => setIsPanelOpen(true)}
                     className="flex mx-auto mt-6 text-white bg-red-900 border-0 py-2 px-5 focus:outline-none hover:bg-[#a64949] rounded"
                     type="button"
                   >
@@ -115,6 +118,50 @@ function DashboardContent() {
           </div>
         </section>
       </main>
+
+      {/* Side Panel (Drawer) */}
+      {isPanelOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setIsPanelOpen(false)}
+          ></div>
+
+          {/* Panel */}
+          <div className="relative w-96 bg-white dark:bg-gray-800 h-full shadow-xl z-50 ml-auto p-6 flex flex-col justify-between">
+            <div>
+              <button
+                className="absolute top-4 right-4 text-gray-600 dark:text-gray-300 hover:text-black"
+                onClick={() => setIsPanelOpen(false)}
+              >
+                <X className="h-6 w-6" />
+              </button>
+              <h2 className="text-xl font-semibold mb-4">Order Management</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Here you can manage this specific order (e.g., update status,
+                assign user, view details, etc.).
+              </p>
+            </div>
+
+            {/* Buttons at bottom */}
+            <div className="flex gap-4 mt-6">
+              <a
+                href="#"
+                className="flex-1 text-center text-white bg-red-900 border-0 py-2 px-5 focus:outline-none hover:bg-[#a64949] rounded"
+              >
+                Send to Kitchen
+              </a>
+              <a
+                href="#"
+                className="flex-1 text-center text-white bg-gray-600 border-0 py-2 px-5 focus:outline-none hover:bg-gray-700 rounded"
+              >
+                Deny
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
