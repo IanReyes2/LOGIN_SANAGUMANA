@@ -96,7 +96,7 @@ function DashboardContent() {
                   <img
                     alt="content"
                     className="object-cover object-center h-full w-full"
-                    src="/SWASTIKA.png"
+                    src="/img/SWASTIKA.png"
                   />
                 </div>
                 <h2 className="title-font text-2xl font-medium text-gray-900 mt-6 mb-3">
