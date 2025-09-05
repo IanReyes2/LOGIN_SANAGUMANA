@@ -16,7 +16,7 @@ export default function DashboardPage() {
     // 1️⃣ Initial fetch of existing orders (in case dashboard loads late)
     const fetchOrders = async () => {
       try {
-        const res = await fetch("http://192.168.1.50:3001/api/order");
+        const res = await fetch("http://192.168.1.5:3001/api/order");
         if (res.ok) {
           const data = await res.json();
           setOrders(data);
@@ -28,7 +28,7 @@ export default function DashboardPage() {
     fetchOrders();
 
     // 2️⃣ Setup WebSocket connection
-    const socket = new WebSocket("ws://192.168.1.50:3001");
+    const socket = new WebSocket("ws://192.168.1.5:3001");
 
     socket.onopen = () => {
       console.log("✅ WebSocket connected to backend");
@@ -36,11 +36,15 @@ export default function DashboardPage() {
 
     socket.onmessage = (event) => {
       try {
-        const newOrder = JSON.parse(event.data);
-        console.log("📥 New order received:", newOrder);
+        const data = JSON.parse(event.data);
 
-        // Append new order to existing orders
-        setOrders((prevOrders) => [...prevOrders, newOrder]);
+        if (data.type === "init") {
+          // Backend sent all existing orders
+          setOrders(data.orders);
+        } else {
+          // Backend sent a new single order
+          setOrders((prevOrders) => [...prevOrders, data]);
+        }
       } catch (err) {
         console.error("❌ Error parsing WebSocket message:", err);
       }
@@ -59,12 +63,20 @@ export default function DashboardPage() {
     };
   }, []);
 
+   // ✅ Logout handler (redirect to login page)
+  const handleLogout = () => {
+    alert("Logging out...");
+    window.location.href = "/login"; // redirect to login page
+  };
+
+
   return (
     <>
       {/* 🔹 Navbar */}
       <nav className="fixed top-0 z-50 w-full bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
         <div className="px-3 py-3 lg:px-5 lg:pl-3">
           <div className="flex items-center justify-between">
+            {/* Left Side */}
             <div className="flex items-center justify-start rtl:justify-end">
               <button
                 data-drawer-target="logo-sidebar"
@@ -93,6 +105,16 @@ export default function DashboardPage() {
                   The FrancisCanteen
                 </span>
               </a>
+            </div>
+
+            {/* Right Side - Logout Button */}
+            <div>
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>
