@@ -5,7 +5,27 @@ const cors = require("cors");
 const os = require("os"); // ✅ added to detect LAN IP
 
 const app = express();
-app.use(cors());
+
+// ✅ Adaptive CORS fix
+const FRONTEND_PORT = 3003;
+const networkInterfaces = os.networkInterfaces();
+let lanIP = "localhost";
+for (const iface of Object.values(networkInterfaces)) {
+  for (const net of iface) {
+    if (net.family === "IPv4" && !net.internal) {
+      lanIP = net.address;
+    }
+  }
+}
+
+app.use(cors({
+  origin: [
+    `http://localhost:${FRONTEND_PORT}`,
+    `http://${lanIP}:${FRONTEND_PORT}`
+  ],
+  credentials: true,
+}));
+
 app.use(express.json());
 
 // Store orders in memory (replace with DB later if needed)

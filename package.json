@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "npx next dev -H 0.0.0.0 -p 3001",
-    "dev:backend": "next dev -H 192.168.1.5 -p 3001",
     "dev:3001": "next dev -p 3001",
     "build": "npx next build",
     "start": "npx next start",
