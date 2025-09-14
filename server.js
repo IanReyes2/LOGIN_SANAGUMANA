@@ -2,7 +2,7 @@ const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const cors = require("cors");
-const os = require("os"); // ✅ added to detect LAN IP
+const os = require("os"); 
 
 const app = express();
 
@@ -19,12 +19,10 @@ for (const iface of Object.values(networkInterfaces)) {
 }
 
 app.use(cors({
-  origin: [
-    `http://localhost:${FRONTEND_PORT}`,
-    `http://${lanIP}:${FRONTEND_PORT}`
-  ],
+  origin: (origin, callback) => callback(null, true), // allow all
   credentials: true,
 }));
+
 
 app.use(express.json());
 
