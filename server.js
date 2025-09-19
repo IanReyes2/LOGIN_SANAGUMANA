@@ -1,8 +1,10 @@
+
+
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const cors = require("cors");
-const os = require("os"); 
+const os = require("os");
 
 const app = express();
 
@@ -18,11 +20,12 @@ for (const iface of Object.values(networkInterfaces)) {
   }
 }
 
-app.use(cors({
-  origin: (origin, callback) => callback(null, true), // allow all
-  credentials: true,
-}));
-
+app.use(
+  cors({
+    origin: (origin, callback) => callback(null, true), // allow all
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
@@ -60,6 +63,31 @@ app.post("/api/order", (req, res) => {
 // ✅ API route: dashboard can fetch existing orders
 app.get("/api/order", (req, res) => {
   res.json(orders);
+});
+
+// ✅ GET ready orders
+app.get("/api/ready-orders", (req, res) => {
+  const readyOrders = orders.filter((order) => order.status === "Ready");
+  res.json(readyOrders);
+});
+
+
+// ✅ Update order status
+app.patch("/api/order/:id", (req, res) => {
+  const orderId = parseInt(req.params.id, 10);
+  const { status } = req.body;
+
+  const order = orders.find((o) => o.id === orderId);
+  if (!order) {
+    return res.status(404).json({ error: "Order not found" });
+  }
+
+  order.status = status;
+
+  // Broadcast status update to dashboards
+  broadcastOrder({ type: "status_update", order });
+
+  res.json(order);
 });
 
 // WebSocket connection setup

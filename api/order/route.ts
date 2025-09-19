@@ -8,7 +8,7 @@ type Order = {
   total: number;
 };
 
-const orders: Order[] = []; // Temporary in-memory storage
+export const orders: Order[] = []; // Temporary in-memory storage
 
 // POST /api/orders
 export async function POST(req: Request) {
