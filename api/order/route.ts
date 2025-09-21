@@ -1,58 +1,25 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
-type Order = {
-  id: number;
-  code: string;
-  date: string;
-  items: { name: string; price: number; quantity: number }[];
-  total: number;
-};
-
-export const orders: Order[] = []; // Temporary in-memory storage
-
-// POST /api/orders
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    if (!body.code || !body.items || !body.total) {
-      return NextResponse.json(
-        { error: "Invalid order data" },
-        { status: 400 }
-      );
-    }
+    const newOrder = await prisma.order.create({
+      data: {
+        customerName: body.customer || "Guest",
+        items: body.items,
+        status: "pending",
+        total: body.total ?? 0,
+      } as Prisma.OrderCreateInput, // ✅ tell TS this is valid
+    });
 
-    const order: Order = {
-      id: Date.now(),
-      code: body.code,
-      date: new Date().toISOString(),
-      items: body.items,
-      total: body.total,
-    };
-
-    orders.push(order);
-
+    return NextResponse.json({ success: true, data: newOrder });
+  } catch (err) {
+    console.error(err);
     return NextResponse.json(
-      { message: "Order placed", order },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error("POST /api/orders error:", error);
-    return NextResponse.json(
-      { error: "Failed to place order" },
-      { status: 500 }
-    );
-  }
-}
-
-// GET /api/orders
-export async function GET() {
-  try {
-    return NextResponse.json(orders, { status: 200 });
-  } catch (error) {
-    console.error("GET /api/orders error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch orders" },
+      { success: false, error: "Failed to create order" },
       { status: 500 }
     );
   }

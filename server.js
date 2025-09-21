@@ -51,6 +51,7 @@ app.post("/api/order", (req, res) => {
     id: orders.length + 1,
     items: req.body.items || [],
     total: req.body.total || 0,
+    status: "pending" // default
   };
   orders.push(order);
 
