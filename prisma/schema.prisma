@@ -31,7 +31,7 @@ model Order {
   updatedAt    DateTime    @updatedAt
   tableNumber  Int?
   orderType    String      @default("dine-in") // dine-in | takeout | delivery
-
+  orderCode    String?     @unique
   items        OrderItem[] // relation
 }
 
@@ -44,3 +44,13 @@ model OrderItem {
   orderId   String
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
+
+model KitchenQueue {
+  id        String   @id @default(cuid())
+  name      String
+  price     Float
+  quantity  Int
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+}
+
