@@ -1,75 +1,47 @@
-// app/api/order/[id]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { broadcast } from "@/lib/websocket";
 
-interface OrderItemType {
-  name: string;
-  price: number;
-  quantity: number;
-}
-
-interface OrderType {
-  id: string;
-  orderCode?: string | null;
-  createdAt?: Date | null;
-  status: string;
-  total: number;
-  items?: OrderItemType[];
-}
-
-function normalizeOrder(o: OrderType) {
-  return {
-    id: o.id,
-    orderCode: o.orderCode || `IU${String(o.id).padStart(3, "0")}`,
-    createdAt: o.createdAt?.toISOString() || new Date().toISOString(),
-    status: o.status,
-    total: o.total,
-    items: (o.items || []).map((i) => ({
-      name: i.name,
-      price: i.price,
-      quantity: i.quantity,
-    })),
-  };
-}
-
-/**
- * PATCH endpoint to update order status or mark an item as served
- */
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
+    const orderId = Number(params.id);
 
-    // If an itemId is sent, remove that item (mark as served)
+    let updatedOrder;
+
+    // Delete a single item if itemId is provided
     if (body.itemId) {
-      await prisma.orderItem.delete({
-        where: { id: body.itemId },
-      });
-
-      // Fetch the updated order with remaining items
-      const updatedOrder = await prisma.order.findUnique({
-        where: { id: params.id },
-        include: { items: true },
-      });
-
-      return NextResponse.json(normalizeOrder(updatedOrder!));
+      await prisma.orderItem.delete({ where: { id: Number(body.itemId) } });
+      updatedOrder = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } });
+      if (updatedOrder) broadcast({ type: "status_update", order: updatedOrder });
+      return NextResponse.json(updatedOrder);
     }
 
-    // Otherwise, just update order status
-    const updated = await prisma.order.update({
-      where: { id: params.id },
-      data: { status: body.status ?? "confirmed" },
+    // Otherwise, update order status
+    if (!body.status) return NextResponse.json({ error: "Missing status" }, { status: 400 });
+
+    updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { status: body.status },
       include: { items: true },
     });
 
-    return NextResponse.json(normalizeOrder(updated));
+    broadcast({ type: "status_update", order: updatedOrder });
+    return NextResponse.json(updatedOrder);
   } catch (err) {
-    console.error("PATCH /api/order/[id] error:", err);
-    return NextResponse.json(
-      { success: false, error: "Failed to update" },
-      { status: 500 }
-    );
+    console.error(err);
+    return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const orderId = Number(params.id);
+    await prisma.order.delete({ where: { id: orderId } });
+    broadcast({ type: "order_removed", orderId });
+    return NextResponse.json({ success: true, orderId });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Failed to delete order" }, { status: 500 });
   }
 }
