@@ -5,7 +5,7 @@ import { WebSocketServer } from "ws";
 import os from "os";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { prisma } from "./lib/prisma"; // make sure path is correct
+import { prisma } from "./lib/prisma.ts"; // make sure path is correct
 
 // ------------------- Express HTTP Server -------------------
 const app = express();
@@ -34,39 +34,69 @@ app.post("/api/order", async (req, res) => {
   try {
     const body = req.body;
 
+    // ---------- Logging incoming request ----------
+    console.log("POST /api/order body:", JSON.stringify(body, null, 2));
+
+    // ---------- Basic validation ----------
+    if (!body || !Array.isArray(body.items) || body.items.length === 0) {
+      return res.status(400).json({ error: "Order must include at least one item" });
+    }
+
+    if (!body.customerName) {
+      // default to kiosk if not provided
+      body.customerName = body.customer ?? "Kiosk";
+    }
+
+    // Optional: verify item fields exist and types
+    for (const it of body.items) {
+      if (typeof it.name !== "string" || typeof it.unitPrice !== "number" || typeof it.qty !== "number") {
+        return res.status(400).json({
+          error: "Each item must have name (string), unitPrice (number), qty (number)"
+        });
+      }
+    }
+
+    // ---------- Create order in Prisma ----------
     const order = await prisma.order.create({
       data: {
-        customer: body.customer,
-        customerName: body.customerName ?? body.customer,
+        customer: body.customer ?? "Guest",
+        customerName: body.customerName,
         total: body.total,
-        orderCode: body.orderCode ?? undefined,
+        orderCode: body.orderCode,
         tableNumber: body.tableNumber ?? null,
         orderType: body.orderType ?? "kiosk",
+        createdAt: body.createdAt ? new Date(body.createdAt) : undefined,
         items: {
           create: body.items.map((item) => ({
             name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            notes: item.notes ?? null,
+            price: Number(item.unitPrice),
+            quantity: Number(item.qty),
           })),
         },
       },
       include: { items: true },
     });
 
-    // Broadcast new order to all WS clients
-    wss.clients.forEach((client) => {
-      if (client.readyState === 1)
-        client.send(JSON.stringify({ type: "new_order", order }));
-    });
-
-    res.json(order);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to create order" });
+   // Broadcast only confirmed orders to kitchen dashboards
+wss.clients.forEach((client) => {
+  if (client.readyState === 1) {
+    if (status === "confirmed") {
+      client.send(JSON.stringify({ type: "status_update", order: updatedOrder }));
+    } else if (status === "served") {
+      client.send(JSON.stringify({ type: "order_removed", orderId: updatedOrder.id }));
+    }
   }
 });
 
+    // ---------- Respond ----------
+    res.json(order);
+  } catch (err) {
+    console.error("Error in POST /api/order:", err);
+    let message = "Failed to create order";
+    if (err?.message) message += `: ${err.message}`;
+    res.status(500).json({ error: message });
+  }
+});
 // PATCH order status
 app.patch("/api/order/:id", async (req, res) => {
   try {
