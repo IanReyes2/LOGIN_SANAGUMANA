@@ -43,11 +43,9 @@ app.post("/api/order", async (req, res) => {
     }
 
     if (!body.customerName) {
-      // default to kiosk if not provided
       body.customerName = body.customer ?? "Kiosk";
     }
 
-    // Optional: verify item fields exist and types
     for (const it of body.items) {
       if (typeof it.name !== "string" || typeof it.unitPrice !== "number" || typeof it.qty !== "number") {
         return res.status(400).json({
@@ -77,16 +75,12 @@ app.post("/api/order", async (req, res) => {
       include: { items: true },
     });
 
-   // Broadcast only confirmed orders to kitchen dashboards
-wss.clients.forEach((client) => {
-  if (client.readyState === 1) {
-    if (status === "confirmed") {
-      client.send(JSON.stringify({ type: "status_update", order: updatedOrder }));
-    } else if (status === "served") {
-      client.send(JSON.stringify({ type: "order_removed", orderId: updatedOrder.id }));
-    }
-  }
-});
+    // ✅ Broadcast new order to all connected dashboards
+    wss.clients.forEach((client) => {
+      if (client.readyState === 1) {
+        client.send(JSON.stringify({ type: "new_order", order }));
+      }
+    });
 
     // ---------- Respond ----------
     res.json(order);
@@ -97,6 +91,7 @@ wss.clients.forEach((client) => {
     res.status(500).json({ error: message });
   }
 });
+
 // PATCH order status
 app.patch("/api/order/:id", async (req, res) => {
   try {
@@ -113,8 +108,13 @@ app.patch("/api/order/:id", async (req, res) => {
 
     // Broadcast status update
     wss.clients.forEach((client) => {
-      if (client.readyState === 1)
-        client.send(JSON.stringify({ type: "status_update", order: updatedOrder }));
+      if (client.readyState === 1) {
+        if (updatedOrder.status === "confirmed") {
+          client.send(JSON.stringify({ type: "status_update", order: updatedOrder }));
+        } else if (updatedOrder.status === "served") {
+          client.send(JSON.stringify({ type: "order_removed", orderId: updatedOrder.id }));
+        }
+      }
     });
 
     res.json(updatedOrder);
