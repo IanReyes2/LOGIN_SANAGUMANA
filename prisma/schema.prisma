@@ -33,6 +33,7 @@ model Order {
   orderType    String      @default("dine-in") // dine-in | takeout | delivery
   orderCode    String?     @unique
   items        OrderItem[] // relation
+  processingTime String?
 }
 
 model OrderItem {
