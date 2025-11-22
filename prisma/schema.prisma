@@ -24,15 +24,17 @@ model User {
 model Order {
   id           String      @id @default(cuid())
   customerName String
-  status       String      @default("pending") // pending | preparing | done | cancelled
+  status       String      @default("pending") 
   total        Float
   customer     String  
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   tableNumber  Int?
-  orderType    String      @default("dine-in") // dine-in | takeout | delivery
+  orderType    String      @default("dine-in") 
   orderCode    String?     @unique
-  items        OrderItem[] // relation
+  items        OrderItem[] 
+  startedAt      DateTime?   
+  servedAt       DateTime?   
   processingTime String?
 }
 
