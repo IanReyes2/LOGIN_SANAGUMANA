@@ -5,7 +5,7 @@ import { WebSocketServer } from "ws";
 import os from "os";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { prisma } from "./lib/prisma.ts"; // <-- make sure lib/prisma.ts exists
+import { prisma } from "./lib/prisma.ts"; 
 
 // -----------------------
 // Express HTTP Server 
