@@ -10,7 +10,40 @@ function escapeCSV(val: any) {
 
 export async function GET() {
   try {
+    // -----------------------------
+    // UTC "TODAY" RANGE (CORRECT)
+    // -----------------------------
+    const now = new Date();
+
+    const startOfTodayUTC = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        0, 0, 0, 0
+      )
+    );
+
+    const endOfTodayUTC = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        23, 59, 59, 999
+      )
+    );
+
+    // -----------------------------
+    // FETCH TODAY'S CONFIRMED SALES
+    // -----------------------------
     const orders = await prisma.order.findMany({
+      where: {
+        status: "confirmed",
+        updatedAt: {
+          gte: startOfTodayUTC,
+          lte: endOfTodayUTC,
+        },
+      },
       include: {
         items: true,
       },
@@ -19,10 +52,15 @@ export async function GET() {
       },
     });
 
-    // CSV header with correct column names
+    // -----------------------------
+    // CSV HEADER
+    // -----------------------------
     let csv =
       "Order Code,Customer Name,Total,Status,Created At,Updated At,Processing Time,Items\n";
 
+    // -----------------------------
+    // CSV ROWS
+    // -----------------------------
     for (const order of orders) {
       const itemNames = order.items.map((i) => i.name).join(" | ");
 
@@ -48,7 +86,7 @@ export async function GET() {
 
       csv += [
         escapeCSV(order.orderCode ?? `#${order.id.slice(0, 6)}`),
-        escapeCSV(order.customerName),
+        escapeCSV(order.customerName ?? ""),
         escapeCSV(order.total),
         escapeCSV(order.status),
         escapeCSV(formattedCreatedAt),
@@ -58,12 +96,17 @@ export async function GET() {
       ].join(",") + "\n";
     }
 
+    // -----------------------------
+    // RESPONSE
+    // -----------------------------
+    const fileDate = startOfTodayUTC.toISOString().slice(0, 10);
+
     return new NextResponse(csv, {
       status: 200,
       headers: {
         "Content-Type": "text/csv",
-        "Content-Disposition": `attachment; filename="orders_export_${Date.now()}.csv"`,
-        "Access-Control-Allow-Origin": "*", // allow cross-port fetch
+        "Content-Disposition": `attachment; filename="sales_${fileDate}.csv"`,
+        "Access-Control-Allow-Origin": "*",
       },
     });
   } catch (error) {
