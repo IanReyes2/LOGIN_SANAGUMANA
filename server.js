@@ -120,23 +120,32 @@ app.patch("/api/order/:id", async (req, res) => {
 });
 
 // DELETE an order
-app.delete("/api/order/:id", async (req, res) => {
+app.delete("/api/order", async (req, res) => {
   try {
-    const { id } = req.params;
-
-    await prisma.order.delete({ where: { id } });
-
-    wss.clients.forEach((client) => {
-      if (client.readyState === 1)
-        client.send(JSON.stringify({ type: "order_removed", orderId: id }));
+    const orders = await prisma.order.findMany({
+      where: { status: "pending" },
     });
 
-    res.json({ success: true, orderId: id });
+    for (const order of orders) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { status: "confirmed" },
+      });
+    }
+
+    wss.clients.forEach((client) => {
+      if (client.readyState === 1) {
+        client.send(JSON.stringify({ type: "clear" }));
+      }
+    });
+
+    res.json({ success: true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to delete order" });
+    res.status(500).json({ error: "Failed to clear queue" });
   }
 });
+
 
 // -----------------------
 // CSV EXPORT ROUTE
