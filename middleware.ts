@@ -23,6 +23,7 @@ export async function middleware(request: NextRequest) {
           "Access-Control-Allow-Origin": "http://localhost:3001",
           "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Credentials": "true",
         },
       })
     }
@@ -30,6 +31,7 @@ export async function middleware(request: NextRequest) {
     // Set CORS headers on normal API requests
     const res = NextResponse.next()
     res.headers.set("Access-Control-Allow-Origin", "http://localhost:3001")
+    res.headers.set("Access-Control-Allow-Credentials", "true");
     return res
   }
 
