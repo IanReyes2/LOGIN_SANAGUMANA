@@ -87,35 +87,3 @@ export async function POST(req: Request) {
   }
 }
 
-// DELETE all pending orders (mark as served)
-export async function DELETE() {
-  try {
-    const pendingOrders = await prisma.order.findMany({
-      where: { status: "pending" },
-      include: { items: true },
-    });
-
-    // Calculate processingTime for each before updating
-    const updates = pendingOrders.map((order) => {
-      const diffMs = new Date().getTime() - order.createdAt.getTime();
-      const minutes = Math.floor(diffMs / 60000);
-      const seconds = Math.floor((diffMs % 60000) / 1000);
-      const processingTime = `${minutes.toString().padStart(2, "0")}:${seconds
-        .toString()
-        .padStart(2, "0")}`;
-      return prisma.order.update({
-        where: { id: order.id },
-        data: { status: "confirmed", processingTime },
-      });
-    });
-
-    const updatedOrders = await Promise.all(updates);
-
-    broadcast({ type: "clear", orders: updatedOrders.map(normalizeOrder) });
-
-    return NextResponse.json({ success: true, updatedCount: updatedOrders.length });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Failed to clear orders" }, { status: 500 });
-  }
-}

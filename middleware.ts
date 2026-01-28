@@ -13,6 +13,26 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get("auth-token")?.value
 
+ //CORS FOR API
+  if (pathname.startsWith("/api")) {
+    // Handle preflight requests
+    if (request.method === "OPTIONS") {
+      return new NextResponse(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "http://localhost:3001",
+          "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      })
+    }
+
+    // Set CORS headers on normal API requests
+    const res = NextResponse.next()
+    res.headers.set("Access-Control-Allow-Origin", "http://localhost:3001")
+    return res
+  }
+
   // Check if the current path is protected
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))

@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { broadcast } from "@/lib/websocket";
 
+
+//BASTA YUNG CORS TO
+function withCORS(res: NextResponse) {
+  res.headers.set("Access-Control-Allow-Origin", "http://localhost:3001")
+  res.headers.set("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS")
+  res.headers.set("Access-Control-Allow-Headers", "Content-Type")
+  return res
+}
+
 // Helper to format timestamp
 function formatTimestamp(date: Date) {
   const d = new Date(date);
@@ -37,7 +46,21 @@ function normalizeOrder(order: any) {
   };
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function OPTIONS() {
+  return withCORS(new NextResponse(null, { status: 204 }))
+}
+
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } },
+) {
+  return new Response(`OK ${params.id}`);
+}
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } },
+) {
   try {
     const body = await req.json();
     const orderId = params.id;
@@ -51,8 +74,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         where: { id: orderId },
         include: { items: true },
       });
-      if (updatedOrder) broadcast({ type: "status_update", order: normalizeOrder(updatedOrder) });
-      return NextResponse.json(normalizeOrder(updatedOrder));
+      if (updatedOrder)
+        broadcast({
+          type: "status_update",
+          order: normalizeOrder(updatedOrder),
+        });
+      return withCORS(NextResponse.json(normalizeOrder(updatedOrder)));
     }
 
     if (!body.status)
@@ -83,16 +110,26 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json(normalizeOrder(updatedOrder));
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update order" },
+      { status: 500 },
+    );
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } },
+) {
   try {
     const orderId = params.id;
 
-    // Mark order as served with processing time
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    // 1️⃣ FETCH FIRST (for CSV + processing time)
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+
     let processingTime: string | undefined = undefined;
     if (order) {
       const diffMs = new Date().getTime() - order.createdAt.getTime();
@@ -103,17 +140,25 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
         .padStart(2, "0")}`;
     }
 
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: { status: "confirmed", processingTime },
-      include: { items: true },
-    });
+    // ⬅️ THIS is where your CSV logic should read from
+    // logDeniedOrderToCSV({ ...order, processingTime })
 
+    // 2️⃣ HARD DELETE
+    await prisma.$transaction([
+      prisma.orderItem.deleteMany({ where: { orderId } }),
+      prisma.order.delete({ where: { id: orderId } }),
+    ]);
+
+    // 3️⃣ Broadcast removal
     broadcast({ type: "order_removed", orderId });
 
-    return NextResponse.json({ success: true, order: normalizeOrder(updatedOrder) });
+    return withCORS(NextResponse.json({ success: true }));
   } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Failed to delete order" }, { status: 500 });
+    console.error("DELETE /api/order/[id] failed:", err);
+    return NextResponse.json(
+      { error: "Failed to delete order" },
+      { status: 500 },
+    );
   }
 }
+
